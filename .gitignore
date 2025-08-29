@@ -31,3 +31,6 @@ assets/docs/*
 
 .cache
 .vscode
+*.pdf
+*.png
+*.jpg
