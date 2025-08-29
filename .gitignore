@@ -1,0 +1,33 @@
+*.ipynb*
+*.ipynb
+
+# local data
+outputs/*
+data/*
+temp*
+test*
+
+# python
+.ipynb_checkpoints
+*.ipynb
+**/__pycache__/
+
+# logs
+*.log
+*.out
+
+models/*
+
+# Sphinx documentation
+docs/*/_build/
+assets/demo
+assets/demo/*
+assets/docs
+assets/docs/*
+*.pdf
+*.jpg
+*.png
+*.jpeg
+
+.cache
+.vscode

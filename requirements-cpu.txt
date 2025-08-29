@@ -1,0 +1,10 @@
+omegaconf
+matplotlib
+PyMuPDF
+ultralytics>=8.2.85
+doclayout-yolo
+unimernet==0.2.1
+paddlepaddle
+paddleocr==2.7.3
+struct-eqtable
+img2pdf
