@@ -28,6 +28,7 @@ class Email:
         msg["Subject"] = self.subject
         msg["From"] = self.sender
         msg["To"] = self.receiver
+        #msg["Bcc"]= 'distribucio@grupserhs.com'
         msg.set_content(self.body)
         msg.add_alternative(self.montar_html(self.body, contingut), subtype='html')
 

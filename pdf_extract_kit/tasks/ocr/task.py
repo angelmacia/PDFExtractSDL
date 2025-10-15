@@ -1,4 +1,5 @@
 import array
+import sys
 import os
 import re
 import json
@@ -13,6 +14,7 @@ from pdf_extract_kit.registry.registry import TASK_REGISTRY
 from pdf_extract_kit.utils.data_preprocess import load_pdf
 from pdf_extract_kit.tasks.base_task import BaseTask
 from pdf_extract_kit.utils.pdf_utils import save_pdf
+
 from pdf_extract_kit.tasks.ocr.emails import Email
 from subprocess import run
 
@@ -80,23 +82,36 @@ class OCRTask(BaseTask):
             
     def process(self, input_path, save_dir=None, visualize=False):
         sw_drive=0
+        sw_planes=0
+        sw_nomesSeparar=0
+
         if(sw_drive):
             run(["rclone", "move", "ocr_input:", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/assets/inputs/ocr"])
         dir_list= self.prepare_input_files(input_path)
+        print(dir_list)
         for directori in dir_list:
             dirpos=directori.rfind('/')+1
             plataforma=directori[dirpos:100]
+            
             ##### Asignar arxiu LOG################
             dataprocess= datetime.now().strftime("%Y-%m-%d")
             self.logfilename='outputs/log_'+plataforma+'_'+dataprocess+'.txt'
             ##### Agafa els PDF's de cada plataforma
             file_list = self.prepare_input_files(directori)
+            
             res_list = []
             if res_list != []:
                 print('--------------------------------------------------')
                 print(file_list)
                 print('--------------------------------------------------')  
             carpeta=save_dir
+            if(sw_planes):    
+                for prefpath in file_list:  # Per cada PDF
+                    self.separa_planes(prefpath,directori)  
+                if(sw_nomesSeparar):
+                      sys.exit()  
+                file_list = self.prepare_input_files(directori)   
+
             for fpath in file_list:  # Per cada PDF
                 basename = os.path.basename(fpath)[:-4]
                 if fpath.endswith(".pdf") or fpath.endswith(".PDF"):
@@ -164,7 +179,9 @@ class OCRTask(BaseTask):
                                         if(camps[2].find(r'.')!=-1):
                                             textdata = camps[2].replace(r'.','-')  
                                         if (textdata.find(r',')!=-1):
-                                            textdata = textdata.replace(r',','-')   
+                                            textdata = textdata.replace(r',','-')  
+                                        if (textdata.find(r':')!=-1):
+                                            textdata = textdata.replace(r':','-')   
                                         
                                         if(textdata.find(r'/')!=-1):
                                             textdata = textdata.replace(r'/','-')
@@ -208,7 +225,6 @@ class OCRTask(BaseTask):
                                 sw_error=True
 
                         if (sw_error == True):
-                                # activar la linia en cas de voler guardar el json per veure les posicions del camps
                                 carpeta=self.gestiona_dirs_errors(save_dir,plataforma,'revisions')
                                 nomdades=os.path.join(carpeta,datetime.now().strftime("%Y-%m-%d")+'_'+basename +'_'+ f"plana_{page+1}.json")
                                 with open(nomdades, "w", encoding="utf-8") as fitxer:
@@ -223,7 +239,7 @@ class OCRTask(BaseTask):
                         self.reglog+=nom
                         ############################################ Modul Enviament Emails #############################
                         if (ClientNav is not None): 
-                            print(ClientNav)
+                            #print(ClientNav)
                             numemails=len(ClientNav)
                             if (ClientNav[7] >' ') and (not sw_error):
                                 emails=ClientNav[7]
@@ -252,7 +268,7 @@ class OCRTask(BaseTask):
                     res_list.append(pdf_res)
                     os.remove(fpath)    
         #self.llistplanes.sort()
-        if (sw_drive==1):
+        if (sw_drive):
             run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Palafolls/2025", "ocr_output_palafolls:"])
             run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Tarragona/2025", "ocr_output_tarragona:"])
             run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/2025", "ocr_output_ripollet:"])
@@ -499,4 +515,19 @@ class OCRTask(BaseTask):
         if os.path.exists(pdf_nou):
             os.remove(pdf_nou)
             self
-        
+
+    def separa_planes(self, nom, carpeta):
+        print (nom)
+        reader = PdfReader(nom)
+        print ('Planes ',len(reader.pages))
+        for i, page in enumerate(reader.pages, start=1):
+            writer = PdfWriter()
+            writer.add_page(page)
+            nomsenseext=nom.replace('.pdf','')
+            with open(nomsenseext + f"_plana_{i:03d}.pdf", "wb") as f:
+                writer.write(f)
+        os.remove(nom)
+
+
+
+
