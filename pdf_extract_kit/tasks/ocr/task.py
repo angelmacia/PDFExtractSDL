@@ -87,6 +87,7 @@ class OCRTask(BaseTask):
 
         if(sw_drive):
             run(["rclone", "move", "ocr_input:", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/assets/inputs/ocr"])
+            # run(["rclone", "move", "ocr_input:", "/home/denis.jimenez/PDF-Extract-Kit-main/assets/inputs/ocr"])
         dir_list= self.prepare_input_files(input_path)
         print(dir_list)
         for directori in dir_list:
@@ -196,6 +197,7 @@ class OCRTask(BaseTask):
                                                 try:
                                                      data_obj = datetime.strptime(textdata,'%d-%m-%Y')
                                                 except:   
+                                                 print('Error en la data ',textdata)
                                                  sw_error=True   
                                     except:
                                         sw_error=True
@@ -220,8 +222,10 @@ class OCRTask(BaseTask):
 
                                         nom = os.path.join(carpeta,self.gestionanom(CodiClientNav,gNeg, data_obj.strftime("%Y-%m-%d"), plant,camps[3]+".pdf"))
                                 else :
+                                    print ('Menys de 4 camps')
                                     sw_error=True
                             else: 
+                                print ('No s\'ha trobat la plantilla')
                                 sw_error=True
 
                         if (sw_error == True):
@@ -271,12 +275,21 @@ class OCRTask(BaseTask):
         if (sw_drive):
             run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Palafolls/2025", "ocr_output_palafolls:"])
             run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Tarragona/2025", "ocr_output_tarragona:"])
-            run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/2025", "ocr_output_ripollet:"])
-            run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Fornells/2025", "ocr_output_fornells:"])
+            run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/2025",  "ocr_output_ripollet:"])
+            run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Fornells/2025",  "ocr_output_fornells:"])
             run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Palafolls/revisions", "ocr_output_palafolls:/revisions"])
             run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Tarragona/revisions", "ocr_output_tarragona:/revisions"])
-            run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/revisions", "ocr_output_ripollet:/revisions"])
-            run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Fornells/revisions", "ocr_output_fornells:/revisions"])
+            run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/revisions",  "ocr_output_ripollet:/revisions"])
+            run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Fornells/revisions",  "ocr_output_fornells:/revisions"])
+            # DADES PEL SERVIDOR DE PRODUCCIO##############################################################################
+            # run(["rclone", "move", "/home/denis.jimenez/PDF-Extract-Kit-main/outputs/ocr/Palafolls/2025", "ocr_output_palafolls:"])
+            # run(["rclone", "move", "/home/denis.jimenez/PDF-Extract-Kit-main/outputs/ocr/Tarragona/2025", "ocr_output_tarragona:"])
+            # run(["rclone", "move", "/home/denis.jimenez/PDF-Extract-Kit-main/outputs/ocr/Ripollet/2025", "ocr_output_ripollet:"])                
+            # run(["rclone", "move", "/home/denis.jimenez/PDF-Extract-Kit-main/outputs/ocr/Fornells/2025", "ocr_output_fornells:"])
+            # run(["rclone", "move", "/home/denis.jimenez/PDF-Extract-Kit-main/outputs/ocr/Palafolls/revisions", "ocr_output_palafolls:/revisions"]) 
+            # run(["rclone", "move", "/home/denis.jimenez/PDF-Extract-Kit-main/outputs/ocr/Tarragona/revisions", "ocr_output_tarragona:/revisions"])
+            # run(["rclone", "move", "/home/denis.jimenez/PDF-Extract-Kit-main/outputs/ocr/Ripollet/revisions", "ocr_output_ripollet:/revisions"])
+            # run(["rclone", "move", "/home/denis.jimenez/PDF-Extract-Kit-main/outputs/ocr/Fornells/revisions", "ocr_output_fornells:/revisions"])
         return res_list
     
     def visualize_image(self, imatge, ocr_res, save_path, cate2color={}):
@@ -341,6 +354,7 @@ class OCRTask(BaseTask):
                             if (re.search(p,i['text']) is not None):
                                 self.marge_document_y=float(i['poly'][1])-float(arrlinea[3])
                                 self.marge_document_x=float(i['poly'][0])-float(arrlinea[4])
+                              #  print ('Limits plantilla :',i['poly'][0],' ',i['poly'][1], '   ', arrlinea[4], ' ', arrlinea[3])
                                 return [arrlinea[0],arrlinea[1]]
                         # if (re.search(arrlinea[2],i['text']) is not None):    
                         #     self.marge_document_y=float(i['poly'][1])-float(arrlinea[3])
