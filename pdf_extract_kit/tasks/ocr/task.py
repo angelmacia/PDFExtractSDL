@@ -5,6 +5,10 @@ import re
 import json
 import random
 import csv
+import pytesseract
+import fitz  # PyMuPDF
+import sys
+import os
 from pathlib import Path
 from datetime import datetime
 import xml.etree.ElementTree as ET
@@ -22,7 +26,7 @@ from subprocess import run
 class OCRTask(BaseTask):
     score_valid = 0.75 # puntuació mínima per considerar un text
     marge_posicio_x = 15 #+ 
-    marge_posicio_y = 10 #+
+    marge_posicio_y = 12 #+
     marge_document_y = 0
     marge_document_x = 0
     dadesGrupNegoci = []
@@ -31,8 +35,12 @@ class OCRTask(BaseTask):
     llistplanes=[]
     cuadresplantilla=[]
     jsondades=[]
-
-
+    numPlanes=0
+    documents=0
+    correctes=0
+    revisions=0
+    nomDocumentProcessat=''
+    
     def __init__(self, model):
         self.carregaDadesNavision()
         """init the task based on the given model.
@@ -81,50 +89,73 @@ class OCRTask(BaseTask):
         return file_list
             
     def process(self, input_path, save_dir=None, visualize=False):
-        sw_drive=0
-        sw_planes=0
+        #opcions de process
+        sw_drivebaixada=0
+        sw_drivepujada=0
+        sw_separarPlanes=1
         sw_nomesSeparar=0
-
-        if(sw_drive):
-            run(["rclone", "move", "ocr_input:", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/assets/inputs/ocr"])
-            # run(["rclone", "move", "ocr_input:", "/home/denis.jimenez/PDF-Extract-Kit-main/assets/inputs/ocr"])
+        sw_guardarjson=0
+        sw_guardarjsonerronis=1
+        ult_camps=[]
+        if(sw_drivebaixada):
+            if(os.path.isdir('/srv/pdf-extract')):
+                    run(["rclone", "move", "ocr_input:", "/srv/pdf-extract/PDF-Extract-Kit-main/assets/inputs/ocr"])
+            else:        
+                    run(["rclone", "move", "ocr_input:", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/assets/inputs/ocr"])
         dir_list= self.prepare_input_files(input_path)
-        print(dir_list)
+        # print(dir_list)
+        self.guardar_logs('Comença el procés ',0,0,'')
         for directori in dir_list:
             dirpos=directori.rfind('/')+1
             plataforma=directori[dirpos:100]
-            
+            print('Plataforma: ',plataforma)                    
             ##### Asignar arxiu LOG################
             dataprocess= datetime.now().strftime("%Y-%m-%d")
             self.logfilename='outputs/log_'+plataforma+'_'+dataprocess+'.txt'
+            
             ##### Agafa els PDF's de cada plataforma
             file_list = self.prepare_input_files(directori)
             
             res_list = []
-            if res_list != []:
-                print('--------------------------------------------------')
-                print(file_list)
-                print('--------------------------------------------------')  
+            # if res_list != []:
+            #     print('--------------------------------------------------')
+            #     print(file_list)
+            #     print('--------------------------------------------------')  
             carpeta=save_dir
-            if(sw_planes):    
+
+            if(sw_separarPlanes):    
+                # print('Separa planes '+datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                 for prefpath in file_list:  # Per cada PDF
-                    self.separa_planes(prefpath,directori)  
+                    if prefpath.endswith(".pdf") or prefpath.endswith(".PDF"):
+                        tot_planes=self.separa_i_orienta(prefpath)  
+                        if(tot_planes>1):
+                            self.guardar_logs('Separar planes ('+directori+')',0,1,prefpath,tot_planes)
                 if(sw_nomesSeparar):
                       sys.exit()  
-                file_list = self.prepare_input_files(directori)   
-
+                file_list = self.prepare_input_files(directori)  
+                
+            self.numPlanes=0     
+            self.documents=0
+            self.correctes=0
+            self.revisions=0
             for fpath in file_list:  # Per cada PDF
-                basename = os.path.basename(fpath)[:-4]
                 if fpath.endswith(".pdf") or fpath.endswith(".PDF"):
+                    basename = os.path.basename(fpath)[:-4].replace('.','_') # treiem els punts intermitjos del nom
+                    self.nomDocumentProcessat=basename
                     images = load_pdf(fpath)  #carrega les imatges del PDF
                     nom=''
                     pdf_res = []
+                    #print('Comença document '+basename+' '+datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                    
                     print('--------------------------------------------------')
                     print(basename)
                     print('--------------------------------------------------')  
                     for page, img in enumerate(images):  #per cada imatge
-                        self.reglog= datetime.now().strftime("%Y-%m-%d %H:%M:%S")+' '  
-                        self.reglog+=basename+' '+str(page+1)+ '\r\n\t'
+                        # self.reglog= datetime.now().strftime("%Y-%m-%d %H:%M:%S")+' '  
+                        # self.reglog+=basename+' '+str(page+1)+ '\r\n\t'
+                        self.numPlanes=self.numPlanes+1
+                        #self.guardar_logs('Processant '+basename,0,1,basename + f"_{page+1}.pdf")
+                        self.reglog = '' 
                         page_res = self.predict_image(img)
                         pdf_res.append(page_res)
                         nom = save_dir + '/' + basename
@@ -137,6 +168,7 @@ class OCRTask(BaseTask):
                             plant=''
                             dadesJsonRevisat=[]
                             fitxerJson=directori+'/'+basename+'.json'
+                            
                             if os.path.exists(fitxerJson):
                                 try:
                                     with open(fitxerJson, 'r', encoding='utf-8') as file:
@@ -148,14 +180,16 @@ class OCRTask(BaseTask):
                                         camps.append(dadesJsonRevisat['dataalbara'])
                                         camps.append(dadesJsonRevisat['numalbara'])
                                         #print('Dades del JSON : ',plant,camps)
-                                        self.reglog += 'Dades del JSON : '+plant+str(camps)+' -> '
+                                        self.reglog = 'Dades del JSON : '+plant+str(camps)
                                 except:
                                     pass
                                 os.remove(fitxerJson)
                             #print('Plantilla detectada : ',plant)
                             # activar la linia en cas de voler guardar el json per veure les posicions del camps
-                            self.save_json_result( page_res, os.path.join(save_dir, basename +'_'+ f"plana_{page+1}.json"))
-                            if(plant==''):
+                            if(sw_guardarjson):
+                                self.save_json_result( page_res, os.path.join(save_dir,'jsons', basename + f"_{page+1}.json"))
+                            if(plant==''):  
+                                print('Detectant plantilla '+basename+' '+datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                                 plantilles=self.detectarPlantilla(page_res)
                                 if (plantilles==[]):
                                     sw_error=True
@@ -166,14 +200,22 @@ class OCRTask(BaseTask):
                             print('--------------------------------------------------')
                             print('Plana : ',page+1)
                             print ('La plantilla es: ',plant)
-                            if(plant is not None):
+                            if(plant is not None and sw_error==False):
                                 if (camps)==[]:
+                                    print('Detectant camps '+basename+' '+datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                                     camps=self.detectarCamps(arxplantilla,page_res)
                                 #print ('Els camps son: ',camps)  
                                 x=0  
                                 x=len(camps)
                                 print ('Resultats de camps : ',x)
+                                if (plant=='VP'):
+                                    if(ult_camps!=[]):
+                                        if (x==1 and camps[0].maketrans('','','.,; ')==ult_camps[0].maketrans('','','.,; ')):
+                                            camps=ult_camps
+                                            x=4
+
                                 if (x>3)  : 
+                                    ult_camps=camps 
                                     #os.makedirs(save_dir, exist_ok=True)
                                     try:
                                         textdata = camps[2]
@@ -198,10 +240,12 @@ class OCRTask(BaseTask):
                                                      data_obj = datetime.strptime(textdata,'%d-%m-%Y')
                                                 except:   
                                                  print('Error en la data ',textdata)
+                                                 self.guardar_logs('La data no te format correcte',1,2, basename + f"_{page+1}.pdf")
                                                  sw_error=True   
                                     except:
                                         sw_error=True
-                                    #print ('El switch_Error ',sw_error)    
+                                    
+                                                                          
                                     if (sw_error==False):
                                         carpeta=self.gestiona_dirs(save_dir,plataforma,data_obj,plant)
         
@@ -223,44 +267,52 @@ class OCRTask(BaseTask):
                                         nom = os.path.join(carpeta,self.gestionanom(CodiClientNav,gNeg, data_obj.strftime("%Y-%m-%d"), plant,camps[3]+".pdf"))
                                 else :
                                     print ('Menys de 4 camps')
+                                    self.guardar_logs('No s\'han trobat tots els camps',1,2, basename + f"_{page+1}.pdf")
                                     sw_error=True
                             else: 
                                 print ('No s\'ha trobat la plantilla')
+                                self.guardar_logs('No s\'ha trobat la plantilla',1,2, basename + f"_{page+1}.pdf")
                                 sw_error=True
 
                         if (sw_error == True):
+                                self.revisions=self.revisions+1
                                 carpeta=self.gestiona_dirs_errors(save_dir,plataforma,'revisions')
-                                nomdades=os.path.join(carpeta,datetime.now().strftime("%Y-%m-%d")+'_'+basename +'_'+ f"plana_{page+1}.json")
+                                nomdades=os.path.join(carpeta,datetime.now().strftime("%Y-%m-%d")+'_'+basename + f"_{page+1}.json")
                                 with open(nomdades, "w", encoding="utf-8") as fitxer:
                                                   json.dump(self.jsondades, fitxer, ensure_ascii=False, indent=4)
-                                self.save_json_result( page_res, os.path.join(save_dir, basename +'_'+ f"plana_{page+1}.json"))
+                                if(sw_guardarjsonerronis or sw_guardarjson):
+                                    self.save_json_result( page_res, os.path.join(save_dir,'jsons', basename + f"_{page+1}.json"))
                                 ClientNav=None
-                                nom=os.path.join(carpeta,datetime.now().strftime("%Y-%m-%d")+'_'+basename +'_'+ f"plana_{page+1}.pdf")
-                                
-                        print(nom)     
-                         
+                                nom=os.path.join(carpeta,datetime.now().strftime("%Y-%m-%d")+'_'+basename + f"_{page+1}.pdf")
+                        else :
+                            self.correctes=self.correctes+1        
+                        #print(nom)     
+                        #print('Guarda document '+nom+' '+datetime.now().strftime("%Y-%m-%d %H:%M:%S")) 
                         self.guardarPDF(nom,img,carpeta)
-                        self.reglog+=nom
+                        self.guardar_logs('Processat '+plataforma+' ('+basename + f"_{page+1}.pdf"+')',0,1,nom,None,self.reglog)
+                        #self.reglog+=nom
                         ############################################ Modul Enviament Emails #############################
-                        if (ClientNav is not None): 
-                            #print(ClientNav)
-                            numemails=len(ClientNav)
-                            if (ClientNav[7] >' ') and (not sw_error):
-                                emails=ClientNav[7]
-                                if (numemails>8):
-                                    emails=emails+','+ClientNav[8]
-                                    if (numemails>9):
-                                        emails=emails +','+ClientNav[9]
+                        if(plant=='VP'):
+                            if (ClientNav is not None):  #nomes als albarans propis de distribució
+                                #print(ClientNav)
+                                numemails=len(ClientNav)
+                                if (ClientNav[7] >' ') and (not sw_error):
+                                    emails=ClientNav[7]
+                                    if (numemails>8):
+                                        emails=emails+','+ClientNav[8]
+                                        if (numemails>9):
+                                            emails=emails +','+ClientNav[9]
 
-                                Envio=Email(emails,"Albarà/Albaran Serhs Distribució",f"{ClientNav[6]}", f"{camps[3]}" ,nom)
-                                Envio.send()
-                                self.reglog+= f"- email enviat en {ClientNav[6]} per a "+emails
+                                    Envio=Email(emails,"Albarà/Albaran Serhs Distribució",f"{ClientNav[6]}", f"{camps[3]}" ,nom)
+                                    Envio.send()
+                                    self.guardar_logs(f"- email enviat en {ClientNav[6]} per a "+emails,0,1,nom)
 
                         ############################################ Modul Enviament Emails #############################
                         self.llistplanes.append(nom)
-                        self.reglog+='\r\n'        
-                        print(self.reglog)            
-                        self.save_log()   
+                        #self.reglog+='\r\n'        
+                        # print(self.reglog)  
+                        # print('Guarda log Plataforma '+basename+' '+datetime.now().strftime("%Y-%m-%d %H:%M:%S"))          
+                        #self.save_log()   
                         if visualize:
                             #self.visualize_image(img, page_res, nom.replace(".pdf",".jpg"))
                             if (sw_error==True):
@@ -268,28 +320,37 @@ class OCRTask(BaseTask):
                                     self.visualize_image(img, page_res, nom.replace(".pdf",".jpg"))
                                 except:
                                     pass
-
                     res_list.append(pdf_res)
-                    os.remove(fpath)    
-        #self.llistplanes.sort()
-        if (sw_drive):
-            run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Palafolls/2025", "ocr_output_palafolls:"])
-            run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Tarragona/2025", "ocr_output_tarragona:"])
-            run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/2025",  "ocr_output_ripollet:"])
-            run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Fornells/2025",  "ocr_output_fornells:"])
-            run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Palafolls/revisions", "ocr_output_palafolls:/revisions"])
-            run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Tarragona/revisions", "ocr_output_tarragona:/revisions"])
-            run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/revisions",  "ocr_output_ripollet:/revisions"])
-            run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Fornells/revisions",  "ocr_output_fornells:/revisions"])
-            # DADES PEL SERVIDOR DE PRODUCCIO##############################################################################
-            # run(["rclone", "move", "/home/denis.jimenez/PDF-Extract-Kit-main/outputs/ocr/Palafolls/2025", "ocr_output_palafolls:"])
-            # run(["rclone", "move", "/home/denis.jimenez/PDF-Extract-Kit-main/outputs/ocr/Tarragona/2025", "ocr_output_tarragona:"])
-            # run(["rclone", "move", "/home/denis.jimenez/PDF-Extract-Kit-main/outputs/ocr/Ripollet/2025", "ocr_output_ripollet:"])                
-            # run(["rclone", "move", "/home/denis.jimenez/PDF-Extract-Kit-main/outputs/ocr/Fornells/2025", "ocr_output_fornells:"])
-            # run(["rclone", "move", "/home/denis.jimenez/PDF-Extract-Kit-main/outputs/ocr/Palafolls/revisions", "ocr_output_palafolls:/revisions"]) 
-            # run(["rclone", "move", "/home/denis.jimenez/PDF-Extract-Kit-main/outputs/ocr/Tarragona/revisions", "ocr_output_tarragona:/revisions"])
-            # run(["rclone", "move", "/home/denis.jimenez/PDF-Extract-Kit-main/outputs/ocr/Ripollet/revisions", "ocr_output_ripollet:/revisions"])
-            # run(["rclone", "move", "/home/denis.jimenez/PDF-Extract-Kit-main/outputs/ocr/Fornells/revisions", "ocr_output_fornells:/revisions"])
+                    # print('Elimina document '+basename+' '+datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                    os.remove(fpath)  
+                          
+            if(self.numPlanes>0): 
+                t_estadistica=(str(self.numPlanes)+'#'+str(self.documents)+'#'+str(self.correctes)+'#'+str(self.revisions))
+                self.guardar_logs('Procés finalitzat',0,0,self.numPlanes,t_estadistica)
+        
+        if (sw_drivepujada):
+            if(os.path.isdir('/srv/pdf-extract')):
+                # DADES PEL SERVIDOR DE PRODUCCIO  ############################################################################
+                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Palafolls/2025", "ocr_output_palafolls:"])
+                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Tarragona/2025", "ocr_output_tarragona:"])
+                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Ripollet/2025", "ocr_output_ripollet:"])                
+                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Fornells/2025", "ocr_output_fornells:"])
+                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Palafolls/revisions", "ocr_output_palafolls:/revisions"]) 
+                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Tarragona/revisions", "ocr_output_tarragona:/revisions"])
+                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Ripollet/revisions", "ocr_output_ripollet:/revisions"])
+                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Fornells/revisions", "ocr_output_fornells:/revisions"])
+            else :    
+                # DADES PER L'EXECUCIO EN LOCAL  ##############################################################################
+                run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Palafolls/2025", "ocr_output_palafolls:"])
+                run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Tarragona/2025", "ocr_output_tarragona:"])
+                run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/2025",  "ocr_output_ripollet:"])
+                run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Fornells/2025",  "ocr_output_fornells:"])
+                run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Palafolls/revisions", "ocr_output_palafolls:/revisions"])
+                run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Tarragona/revisions", "ocr_output_tarragona:/revisions"])
+                run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/revisions",  "ocr_output_ripollet:/revisions"])
+                run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Fornells/revisions",  "ocr_output_fornells:/revisions"])
+           
+           
         return res_list
     
     def visualize_image(self, imatge, ocr_res, save_path, cate2color={}):
@@ -344,27 +405,26 @@ class OCRTask(BaseTask):
             with open(nom, 'r', encoding='utf-8') as file:
                 data = file.read()
                 for linea in data.split("\n"):
-                    arrlinea=linea.split("=")
-                   # print('Prova plantilla :',arrlinea)
-                    for i in ocr_res:
-                        if (i['score']<self.score_valid):
-                            continue
-                        arrpattern = arrlinea[2].split("|")
-                        for p in arrpattern:
-                            if (re.search(p,i['text']) is not None):
-                                self.marge_document_y=float(i['poly'][1])-float(arrlinea[3])
-                                self.marge_document_x=float(i['poly'][0])-float(arrlinea[4])
-                              #  print ('Limits plantilla :',i['poly'][0],' ',i['poly'][1], '   ', arrlinea[4], ' ', arrlinea[3])
-                                return [arrlinea[0],arrlinea[1]]
-                        # if (re.search(arrlinea[2],i['text']) is not None):    
-                        #     self.marge_document_y=float(i['poly'][1])-float(arrlinea[3])
-                        #     self.marge_document_x=float(i['poly'][0])-float(arrlinea[4])
-                        #     return [arrlinea[0],arrlinea[1]]
+                    if linea is not None :
+                        arrlinea=linea.split("=")
+                    # print('Prova plantilla :',arrlinea)
+                        for i in ocr_res:
+                            if (i['score']<self.score_valid):
+                                continue
+                            arrpattern = arrlinea[2].split("|")
+                            for p in arrpattern:
+                                if (re.search(p,i['text']) is not None):
+                                    self.marge_document_y=float(i['poly'][1])-float(arrlinea[3])
+                                    self.marge_document_x=float(i['poly'][0])-float(arrlinea[4])
+                                #  print ('Limits plantilla :',i['poly'][0],' ',i['poly'][1], '   ', arrlinea[4], ' ', arrlinea[3])
+                                    return [arrlinea[0],arrlinea[1]]
+                            # if (re.search(arrlinea[2],i['text']) is not None):    
+                            #     self.marge_document_y=float(i['poly'][1])-float(arrlinea[3])
+                            #     self.marge_document_x=float(i['poly'][0])-float(arrlinea[4])
+                            #     return [arrlinea[0],arrlinea[1]]
  
         except FileNotFoundError:
             print("Error: l'arxiu "+ nom +" no hi és.")
-        finally:
-            file.close()    
         return []
     
     def detectarCamps(self, plant, ocr_res):
@@ -385,6 +445,7 @@ class OCRTask(BaseTask):
                     camp=arrlinea[0]
                     arrposicio=arrlinea[1].split(",") 
                     expresio=arrlinea[2]
+                    print (f'Expressio : {camp} :',expresio)
                     posicio=[]
                     for a in arrposicio:
                         posicio.append(float(a))
@@ -404,8 +465,8 @@ class OCRTask(BaseTask):
                         #if (i['poly'][0]<(posicio[0]+v_x) and i['poly'][0]>(posicio[0]-v_x) and i['poly'][2]<(posicio[2]+v_x ) and i['poly'][2]>(posicio[2]-v_x )): # <--- Falta perfeccionar aquesta condicio 
                         #if(i['poly'][0] <(posicio[0]+self.marge_posicio)): 
                             #print('marge total',v_x)  
-                                                        print('posicion Plantilla  :',posicio[0],posicio[1],posicio[2],posicio[3],camp,self.marge_document_x,self.marge_document_y)
-                                                        print('posicion Camp OCR   :',i['poly'][0],i['poly'][1],i['poly'][2],i['poly'][3],i['text'],self.marge_document_x,self.marge_document_y)
+                                                       # print('posicion Plantilla  :',posicio[0],posicio[1],posicio[2],posicio[3],camp,self.marge_document_x,self.marge_document_y)
+                                                       # print('posicion Camp OCR   :',i['poly'][0],i['poly'][1],i['poly'][2],i['poly'][3],i['text'],self.marge_document_x,self.marge_document_y)
                                                         registrejson+='"'+camp.lower()+'":"'+i['text']+'",'
                                                             
                                     # if (i['poly'][0]<(posicio[0]) and i['poly'][2]>(posicio[2])): 
@@ -419,15 +480,16 @@ class OCRTask(BaseTask):
                                                   #  if (abs(i['poly'][7]-posicio[7])<self.marge_posicio+self.marge_document):
                                                        # print ('El camp '+camp+' es: ',i['text'])
                                                         if (expresio>' '):
-                                                            arrpattern = expresio.split("|")
-                                                            variable=None
-                                                            for p in arrpattern:
-                                                                variable=re.search(p, i['text'])
-                                                                if (variable is not None):
-                                                                    break
+                                                            # arrpattern = expresio.split("|")
+                                                            # variable=None
+                                                            # for p in arrpattern:
+                                                            #     variable=re.search(p, i['text'])
+                                                            #     if (variable is not None):
+                                                            #         break
+                                                            variable=re.search(expresio, i['text'])
                                                             
                                                             if(variable is not None):
-                                                               # print ('El camp '+camp+' es: ',variable.group(0))
+                                                                print ('El camp '+camp+' es: ',variable.group(0))
                                                                 resultat.append(variable.group(0))
                                                             # else:
                                                             #     print ('No TROBAT el camp '+camp+' : ',i['text'])
@@ -439,11 +501,9 @@ class OCRTask(BaseTask):
                 print ('json:',self.jsondades)
 
                 
-                self.reglog += str(resultat)+' -> '
+                self.reglog = str(resultat)
         except FileNotFoundError:
             print("Error: l'arxiu "+ nom +" no hi és.")
-        #finally:
-           # file.close()    
         return resultat
     def carregaDadesNavision(self):
         with open('assets/inputs/CliGrupNegoci.csv', encoding='latin1') as f:
@@ -454,19 +514,26 @@ class OCRTask(BaseTask):
         print('Clients carregats :',cont)    
 
     def selectCodiClientNav(self, plataforma, prove, codi):
-        if (prove!='CCEP' and prove != 'DDI'): prove='VP'
+        
+        if (prove!='CCEP' and prove != 'DDI'): prove='*'
         for i in self.dadesGrupNegoci:
             if(codi==i[1]):
-                if(prove==i[0]):
-                    if(plataforma==i[2]):
-                        return i
+                if(prove==i[0] or prove=='*'):
+                    if(prove=='*' and ('SERHS'==i[0] or'VP'==i[0])):
+                        if(plataforma==i[2]):
+                            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                            return i
+                    else:       
+                        if(plataforma==i[2]):
+                            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                            return i
         return None
 
 
-    def save_log(self):
-        with open(self.logfilename, 'a', encoding='utf-8') as self.log:
-            self.log.write(self.reglog)
-            self.reglog=''
+    # def save_log(self):
+    #     with open(self.logfilename, 'a', encoding='utf-8') as self.log:
+    #         self.log.write(self.reglog)
+    #         self.reglog=''
 
     def gestiona_dirs(self,save_dir,dir,data_obj,plant):
         if not os.path.exists(save_dir):
@@ -508,7 +575,7 @@ class OCRTask(BaseTask):
         else:
             # print('Nom únic',nom)
             img.save(nom)
-            #img.close()
+            self.documents=self.documents+1
             
     def afegir_pdfs(self,pdf_base, pdf_nou):
         sortida=None
@@ -519,29 +586,105 @@ class OCRTask(BaseTask):
             for page in reader.pages:
                 writer.add_page(page)
                 cont=cont+1
-        self.reglog += ' Plana '+str(cont)+' afegida a -> '
+        self.reglog += ' Plana '+str(cont)+' afegida '
         if sortida is None:
             sortida = pdf_base  # sobreescriu el base
 
         with open(sortida, "wb") as f:
             writer.write(f)
-            writer.close()
+            
         if os.path.exists(pdf_nou):
             os.remove(pdf_nou)
-            self
+            
 
-    def separa_planes(self, nom, carpeta):
-        print (nom)
-        reader = PdfReader(nom)
-        print ('Planes ',len(reader.pages))
-        for i, page in enumerate(reader.pages, start=1):
-            writer = PdfWriter()
-            writer.add_page(page)
-            nomsenseext=nom.replace('.pdf','')
-            with open(nomsenseext + f"_plana_{i:03d}.pdf", "wb") as f:
-                writer.write(f)
-        os.remove(nom)
+    # def separa_planes(self, nom, carpeta):
+    #     print (nom)
+    #     reader = PdfReader(nom)
+    #     print ('Planes ',len(reader.pages))
+    #     for i, page in enumerate(reader.pages, start=1):
+    #         writer = PdfWriter()
+    #         writer.add_page(page)
+    #         nomsenseext=nom.replace('.pdf','')
+    #         with open(nomsenseext + f"__{i:03d}.pdf", "wb") as f:
+    #             writer.write(f)
+    #     os.remove(nom)
+    def detect_orientation(selft,image):
+        #Detecta l’orientació mitjançant Tesseract (OSD).
+        try:
+            osd = pytesseract.image_to_osd(image, output_type=pytesseract.Output.DICT)
+            return osd.get("rotate", 0)
+        except pytesseract.TesseractError as e:
+            print(f"⚠️  Error d’OSD: {e}. S’assumeix 0°.")
+            return 0
 
+    def separa_i_orienta(self,input_pdf):
+        
+        #Corregeix l’orientació de cada pàgina i la guarda en un fitxer individual.
+        #Els fitxers tindran el nom: {output_prefix}_1.pdf, {output_prefix}_2.pdf, etc.
+        
+        reader = PdfReader(input_pdf)
+        doc = fitz.open(input_pdf)
+        nomsenseext=input_pdf.replace('.pdf','')
+        total_pages = len(reader.pages)
+        if(total_pages>1):
+            print(f"📄 Processant {total_pages} pàgines...")
+            for page_number in range(total_pages):
+                pdf_page = reader.pages[page_number]
+                fitz_page = doc[page_number]
 
+                # Renderitzar com a imatge
+                pix = fitz_page.get_pixmap(dpi=150)
+                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
 
+                # Detectar i corregir orientació
+                angle = self.detect_orientation(img)
+                if angle != 0:
+                    print(f"↻ Pàgina {page_number + 1}: rotació detectada {angle}° → corregint")
+                    pdf_page.rotate(-angle)
+                else:
+                    print(f"✓ Pàgina {page_number + 1}: orientació correcta")
 
+                # Crear fitxer individual
+                
+                output_file = f"{nomsenseext}_Pag_{page_number + + 1:04d}.pdf"
+                writer = PdfWriter()
+                writer.add_page(pdf_page)
+                with open(output_file, "wb") as f:
+                    writer.write(f)
+                print(f"   → Guardat: {output_file}")
+
+            doc.close()
+            print(f"✅ Totes les pàgines separades amb prefix: Pag_*.pdf")
+            os.remove(input_pdf)
+        return total_pages
+
+    def guardar_logs(self,descripcio,gravetat,nivell,document,estadistica=None,camps=None):       
+        wdata = datetime.now()
+        dataprocess= datetime.now().strftime("%Y-%m-%d")
+        #         [proces][servidor][bdd][nivell][missatge][estadistica][gravetat][timestamp][usuari][text1][text2][text3][text4][text5][text6][text7][text8][text9][text10]
+        buffer="'PDF-EXTRACT','10.252.252.32','pdf_extract','"+str(nivell)+"','"+str(descripcio)+"','"+str(estadistica)+"','"+str(gravetat)+"','"+str(wdata)+"',INTNAVANT,'"+str(document)+"','"+str(camps)+"','','','','','','','','',''\n"  #+'PDF-EXTRACT,10.252.252.32,pdf_extract,'+nivell+','+descripcio+','+estadistica+','+gravetat+','+wdata+','+INTNAVANT+','+document+',,,,,,,,,\n'  
+        with open('outputs/LogPDF_Extract_'+dataprocess+'.txt', 'a', encoding='utf-8') as logGen:
+            logGen.write(buffer)
+        print(buffer)
+
+    #def guardar_logsToDB(self,descripcio,gravetat,nivell,document,estadistica=None):
+        # conn_str = f'DRIVER={{ODBC Driver 18 for SQL Server}};SERVER=''10.70.1.217'';DATABASE=''TIC-INTERN'';UID=''INTNAVANT'';PWD=''SERHS2015@'';Encrypt=no;'
+        # conn = pyodbc.connect(conn_str)
+        # cursor = conn.cursor()
+        # cursor.execute( """EXEC dbo.sp_InsertarLog
+        # @servidor = ?,
+        # @bdd = ?,
+        # @proces = ?,
+        # @nivell = ?,
+        # @missatge = ?,
+        # @gravetat = ?,
+        # @text1 = ?,
+        # @estadistica = ?,
+        # @Estat = ? """
+        # , ('10.252.252.32', 'pdf_extract', 'PDF-EXTRACT', nivell, descripcio, gravetat, document,estadistica,''))
+
+        # #cursor.execute(query_insertarlog)
+        # conn.commit()
+        # cursor.close()
+        # conn.close()
+        
