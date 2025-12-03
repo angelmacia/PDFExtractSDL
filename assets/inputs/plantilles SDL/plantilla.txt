@@ -1,8 +1,11 @@
-CCEP=CCEP2=Girona Sud[., ]?-[\s]?[ .,]?Maresme=421=144
+CCEP=CCEP2=Girona Sud=421=144
 DDI=DDI=B-67210948=246=32
-VP=VP2=Tel:972476280=267=261    
+VP=VP2=Tel:972476280=267=261
+XX=XX=Copia[ .:,;]?repartidor[ .:,;]?carga=0=0
+XX=XX=DOCUMENTOS[ .:,;]?CARGA=0=0
 VP=PREMIUM=B59162701=165=588
 VP=VP=B08485005=1524=150
 CCEP=CCEP=^900[\s\.\,]?246[\s\.\,]?500=98=799
 CCEP=CCEP=Atenci[6oó]n[\s]?a[1il][\s]?[Cc][lL1i]iente[\s:;]?[\s.:,;]?900[\s.,]?[\s.,]?246[\s.,]?[\s.,]?500=98=597
 VP=VP=43006[ ]?TARRAGONA[ ]?\(?TARRAGONA\)=240=183
+XX=XX=LI[OQ]?UIDACI[OQ]?N[ .:,;]?DE[ .:,;]?CARGA=0=0

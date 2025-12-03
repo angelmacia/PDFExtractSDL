@@ -91,22 +91,30 @@ class OCRTask(BaseTask):
     def process(self, input_path, save_dir=None, visualize=False):
         #opcions de process
         sw_drivebaixada=0
-        sw_drivepujada=0
+        sw_drivepujada=1
         sw_separarPlanes=1
         sw_nomesSeparar=0
         sw_guardarjson=0
         sw_guardarjsonerronis=1
         ult_camps=[]
+        if(os.path.isdir('/srv/pdf-extract')):
+            directoriDrive ="/srv/pdf-extract/PDF-Extract-Kit-main/assets/inputs/ocr"
+            separador='/'
+        else:
+            if (os.path.isdir(r'c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main')):  
+                directoriDrive =r"c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\assets\inputs\ocr"                     
+                separador='\\'
+            else:      
+                directoriDrive ="/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/assets/inputs/ocr"
+                separador='/'
+       
         if(sw_drivebaixada):
-            if(os.path.isdir('/srv/pdf-extract')):
-                    run(["rclone", "move", "ocr_input:", "/srv/pdf-extract/PDF-Extract-Kit-main/assets/inputs/ocr"])
-            else:        
-                    run(["rclone", "move", "ocr_input:", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/assets/inputs/ocr"])
+            run(["rclone", "move", "ocr_input:", directoriDrive])
         dir_list= self.prepare_input_files(input_path)
         # print(dir_list)
         self.guardar_logs('Comença el procés ',0,0,'')
         for directori in dir_list:
-            dirpos=directori.rfind('/')+1
+            dirpos=directori.rfind(separador)+1
             plataforma=directori[dirpos:100]
             print('Plataforma: ',plataforma)                    
             ##### Asignar arxiu LOG################
@@ -158,7 +166,7 @@ class OCRTask(BaseTask):
                         self.reglog = '' 
                         page_res = self.predict_image(img)
                         pdf_res.append(page_res)
-                        nom = save_dir + '/' + basename
+                        nom = save_dir + separador + basename
                         ClientNav=None
                         #print(save_dir,'------------------------->>> ')
                         sw_error=False   #Guardará la imatge si hi ha error en cas d'error i sigui =1
@@ -167,7 +175,7 @@ class OCRTask(BaseTask):
                             camps=[]
                             plant=''
                             dadesJsonRevisat=[]
-                            fitxerJson=directori+'/'+basename+'.json'
+                            fitxerJson=directori+separador+basename+'.json'
                             
                             if os.path.exists(fitxerJson):
                                 try:
@@ -200,6 +208,12 @@ class OCRTask(BaseTask):
                             print('--------------------------------------------------')
                             print('Plana : ',page+1)
                             print ('La plantilla es: ',plant)
+
+                            ####### eliminar documents en cas de plantilla XX
+                            if (plant=='XX'):
+                                self.guardar_logs('Document eliminat XX',0,1, basename + f"_{page+1}.pdf")
+                                continue
+
                             if(plant is not None and sw_error==False):
                                 if (camps)==[]:
                                     print('Detectant camps '+basename+' '+datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -236,16 +250,16 @@ class OCRTask(BaseTask):
                                             print (textdata)
                                             data_obj = datetime.strptime(textdata,'%d-%m-%y')
                                         except:
-                                                try:
-                                                     data_obj = datetime.strptime(textdata,'%d-%m-%Y')
-                                                except:   
-                                                 print('Error en la data ',textdata)
-                                                 self.guardar_logs('La data no te format correcte',1,2, basename + f"_{page+1}.pdf")
-                                                 sw_error=True   
+                                            try:
+                                                data_obj = datetime.strptime(textdata,'%d-%m-%Y')
+                                            except:   
+                                                print('Error en la data ',textdata)
+                                                self.guardar_logs('La data no te format correcte',1,2, basename + f"_{page+1}.pdf")
+                                                sw_error=True   
                                     except:
                                         sw_error=True
                                     
-                                                                          
+                                                                        
                                     if (sw_error==False):
                                         carpeta=self.gestiona_dirs(save_dir,plataforma,data_obj,plant)
         
@@ -285,7 +299,8 @@ class OCRTask(BaseTask):
                                 ClientNav=None
                                 nom=os.path.join(carpeta,datetime.now().strftime("%Y-%m-%d")+'_'+basename + f"_{page+1}.pdf")
                         else :
-                            self.correctes=self.correctes+1        
+                            self.correctes=self.correctes+1  
+                                 
                         #print(nom)     
                         #print('Guarda document '+nom+' '+datetime.now().strftime("%Y-%m-%d %H:%M:%S")) 
                         self.guardarPDF(nom,img,carpeta)
@@ -339,18 +354,28 @@ class OCRTask(BaseTask):
                 run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Tarragona/revisions", "ocr_output_tarragona:/revisions"])
                 run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Ripollet/revisions", "ocr_output_ripollet:/revisions"])
                 run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Fornells/revisions", "ocr_output_fornells:/revisions"])
-            else :    
-                # DADES PER L'EXECUCIO EN LOCAL  ##############################################################################
-                run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Palafolls/2025", "ocr_output_palafolls:"])
-                run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Tarragona/2025", "ocr_output_tarragona:"])
-                run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/2025",  "ocr_output_ripollet:"])
-                run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Fornells/2025",  "ocr_output_fornells:"])
-                run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Palafolls/revisions", "ocr_output_palafolls:/revisions"])
-                run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Tarragona/revisions", "ocr_output_tarragona:/revisions"])
-                run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/revisions",  "ocr_output_ripollet:/revisions"])
-                run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Fornells/revisions",  "ocr_output_fornells:/revisions"])
-           
-           
+            else :
+                if (os.path.isdir(r'c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main')): 
+                        # DADES PER L'EXECUCIO EN LOCAL  ##############################################################################
+                    run(["rclone", "move", r"C:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Palafolls\2025", "ocr_output_palafolls:"])
+                    run(["rclone", "move", r"C:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Tarragona\2025", "ocr_output_tarragona:"])
+                    run(["rclone", "move", r"c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Ripollet\2025",  "ocr_output_ripollet:"])
+                    run(["rclone", "move", r"c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Fornells\2025",  "ocr_output_fornells:"])
+                    run(["rclone", "move", r"c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Palafolls\revisions", "ocr_output_palafolls:/revisions"])
+                    run(["rclone", "move", r"c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Tarragona\revisions", "ocr_output_tarragona:/revisions"])
+                    run(["rclone", "move", r"c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Ripollet\revisions",  "ocr_output_ripollet:/revisions"])
+                    run(["rclone", "move", r"C:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Fornells\revisions",  "ocr_output_fornells:/revisions"])
+                else:
+                    # DADES PER L'EXECUCIO EN LOCAL  ##############################################################################
+                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Palafolls/2025", "ocr_output_palafolls:"])
+                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Tarragona/2025", "ocr_output_tarragona:"])
+                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/2025",  "ocr_output_ripollet:"])
+                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Fornells/2025",  "ocr_output_fornells:"])
+                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Palafolls/revisions", "ocr_output_palafolls:/revisions"])
+                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Tarragona/revisions", "ocr_output_tarragona:/revisions"])
+                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/revisions",  "ocr_output_ripollet:/revisions"])
+                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Fornells/revisions",  "ocr_output_fornells:/revisions"])
+
         return res_list
     
     def visualize_image(self, imatge, ocr_res, save_path, cate2color={}):
@@ -400,6 +425,7 @@ class OCRTask(BaseTask):
     def detectarPlantilla(self, ocr_res):
         nom="assets/inputs/plantilles SDL/plantilla.txt"
         textDocument=json.dumps(ocr_res)
+        self.jsondades=[]
         #print(textDocument)
         try:
             with open(nom, 'r', encoding='utf-8') as file:
@@ -409,8 +435,8 @@ class OCRTask(BaseTask):
                         arrlinea=linea.split("=")
                     # print('Prova plantilla :',arrlinea)
                         for i in ocr_res:
-                            if (i['score']<self.score_valid):
-                                continue
+                            # if (i['score']<self.score_valid):
+                            #     continue
                             arrpattern = arrlinea[2].split("|")
                             for p in arrpattern:
                                 if (re.search(p,i['text']) is not None):
@@ -621,40 +647,60 @@ class OCRTask(BaseTask):
         
         #Corregeix l’orientació de cada pàgina i la guarda en un fitxer individual.
         #Els fitxers tindran el nom: {output_prefix}_1.pdf, {output_prefix}_2.pdf, etc.
+        if "_Pag_" in input_pdf:
+            return 0
         
         reader = PdfReader(input_pdf)
         doc = fitz.open(input_pdf)
         nomsenseext=input_pdf.replace('.pdf','')
         total_pages = len(reader.pages)
+        #if(total_pages>1):
+        print(f"📄 Processant {total_pages} pàgines...")
         if(total_pages>1):
-            print(f"📄 Processant {total_pages} pàgines...")
-            for page_number in range(total_pages):
-                pdf_page = reader.pages[page_number]
-                fitz_page = doc[page_number]
+                sw_guardar=True
+        else :
+                sw_guardar=False
+        for page_number in range(total_pages):
+            pdf_page = reader.pages[page_number]
+            fitz_page = doc[page_number]
 
-                # Renderitzar com a imatge
-                pix = fitz_page.get_pixmap(dpi=150)
-                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-
-                # Detectar i corregir orientació
-                angle = self.detect_orientation(img)
-                if angle != 0:
-                    print(f"↻ Pàgina {page_number + 1}: rotació detectada {angle}° → corregint")
-                    pdf_page.rotate(-angle)
+            # Renderitzar com a imatge
+            pix = fitz_page.get_pixmap(dpi=150)
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            if(input_pdf.startswith('r-00')):
+                print(f"✓ Pàgina {page_number + 1}: orientació correcta")
+            else :
+                if input_pdf.startswith('r-90'):
+                    pdf_page.rotate(-90)
+                    print(f"↻ Pàgina {page_number + 1}: rotació detectada -90° → corregint")
+                    sw_guardar=True
                 else:
-                    print(f"✓ Pàgina {page_number + 1}: orientació correcta")
+                    # Detectar i corregir orientació
+                    angle = self.detect_orientation(img)
+                    if angle != 0:
+                        print(f"↻ Pàgina {page_number + 1}: rotació detectada {angle}° → corregint")
+                        pdf_page.rotate(angle)
+                        sw_guardar=True
+                    else:
+                        print(f"✓ Pàgina {page_number + 1}: orientació correcta")
+                        # pdf_page.rotate(angle)
 
-                # Crear fitxer individual
-                
-                output_file = f"{nomsenseext}_Pag_{page_number + + 1:04d}.pdf"
+            # Crear fitxer individual
+            if(total_pages>1):
+                output_file = f"{nomsenseext.replace('r-90', 'r-00')}_Pag_{page_number + + 1:04d}.pdf"
+            else:
+                output_file = f"{nomsenseext.replace('r-90', 'r-00')}.pdf"
+            if(sw_guardar==True):    
                 writer = PdfWriter()
                 writer.add_page(pdf_page)
                 with open(output_file, "wb") as f:
                     writer.write(f)
                 print(f"   → Guardat: {output_file}")
 
-            doc.close()
+        doc.close()
+        if (total_pages>1):
             print(f"✅ Totes les pàgines separades amb prefix: Pag_*.pdf")
+        if sw_guardar:
             os.remove(input_pdf)
         return total_pages
 
