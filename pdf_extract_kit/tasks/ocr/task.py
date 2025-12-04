@@ -18,7 +18,6 @@ from pdf_extract_kit.registry.registry import TASK_REGISTRY
 from pdf_extract_kit.utils.data_preprocess import load_pdf
 from pdf_extract_kit.tasks.base_task import BaseTask
 from pdf_extract_kit.utils.pdf_utils import save_pdf
-
 from pdf_extract_kit.tasks.ocr.emails import Email
 from subprocess import run
 
@@ -90,7 +89,7 @@ class OCRTask(BaseTask):
             
     def process(self, input_path, save_dir=None, visualize=False):
         #opcions de process
-        sw_drivebaixada=0
+        sw_drivebaixada=1
         sw_drivepujada=1
         sw_separarPlanes=1
         sw_nomesSeparar=0
@@ -356,7 +355,7 @@ class OCRTask(BaseTask):
                 run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Fornells/revisions", "ocr_output_fornells:/revisions"])
             else :
                 if (os.path.isdir(r'c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main')): 
-                        # DADES PER L'EXECUCIO EN LOCAL  ##############################################################################
+                    # DADES PER L'EXECUCIO EN LOCAL  ##############################################################################
                     run(["rclone", "move", r"C:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Palafolls\2025", "ocr_output_palafolls:"])
                     run(["rclone", "move", r"C:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Tarragona\2025", "ocr_output_tarragona:"])
                     run(["rclone", "move", r"c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Ripollet\2025",  "ocr_output_ripollet:"])
@@ -375,7 +374,6 @@ class OCRTask(BaseTask):
                     run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Tarragona/revisions", "ocr_output_tarragona:/revisions"])
                     run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/revisions",  "ocr_output_ripollet:/revisions"])
                     run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Fornells/revisions",  "ocr_output_fornells:/revisions"])
-
         return res_list
     
     def visualize_image(self, imatge, ocr_res, save_path, cate2color={}):
@@ -540,7 +538,6 @@ class OCRTask(BaseTask):
         print('Clients carregats :',cont)    
 
     def selectCodiClientNav(self, plataforma, prove, codi):
-        
         if (prove!='CCEP' and prove != 'DDI'): prove='*'
         for i in self.dadesGrupNegoci:
             if(codi==i[1]):
@@ -554,7 +551,6 @@ class OCRTask(BaseTask):
                             print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                             return i
         return None
-
 
     # def save_log(self):
     #     with open(self.logfilename, 'a', encoding='utf-8') as self.log:
@@ -622,7 +618,6 @@ class OCRTask(BaseTask):
         if os.path.exists(pdf_nou):
             os.remove(pdf_nou)
             
-
     # def separa_planes(self, nom, carpeta):
     #     print (nom)
     #     reader = PdfReader(nom)
@@ -634,6 +629,7 @@ class OCRTask(BaseTask):
     #         with open(nomsenseext + f"__{i:03d}.pdf", "wb") as f:
     #             writer.write(f)
     #     os.remove(nom)
+
     def detect_orientation(selft,image):
         #Detecta l’orientació mitjançant Tesseract (OSD).
         try:
@@ -644,7 +640,6 @@ class OCRTask(BaseTask):
             return 0
 
     def separa_i_orienta(self,input_pdf):
-        
         #Corregeix l’orientació de cada pàgina i la guarda en un fitxer individual.
         #Els fitxers tindran el nom: {output_prefix}_1.pdf, {output_prefix}_2.pdf, etc.
         if "_Pag_" in input_pdf:
@@ -667,10 +662,10 @@ class OCRTask(BaseTask):
             # Renderitzar com a imatge
             pix = fitz_page.get_pixmap(dpi=150)
             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-            if(input_pdf.startswith('r-00')):
+            if ('r-00' in input_pdf):
                 print(f"✓ Pàgina {page_number + 1}: orientació correcta")
             else :
-                if input_pdf.startswith('r-90'):
+                if ('r-90' in input_pdf):
                     pdf_page.rotate(-90)
                     print(f"↻ Pàgina {page_number + 1}: rotació detectada -90° → corregint")
                     sw_guardar=True
@@ -707,7 +702,7 @@ class OCRTask(BaseTask):
     def guardar_logs(self,descripcio,gravetat,nivell,document,estadistica=None,camps=None):       
         wdata = datetime.now()
         dataprocess= datetime.now().strftime("%Y-%m-%d")
-        #         [proces][servidor][bdd][nivell][missatge][estadistica][gravetat][timestamp][usuari][text1][text2][text3][text4][text5][text6][text7][text8][text9][text10]
+        # [proces][servidor][bdd][nivell][missatge][estadistica][gravetat][timestamp][usuari][text1][text2][text3][text4][text5][text6][text7][text8][text9][text10]
         buffer="'PDF-EXTRACT','10.252.252.32','pdf_extract','"+str(nivell)+"','"+str(descripcio)+"','"+str(estadistica)+"','"+str(gravetat)+"','"+str(wdata)+"',INTNAVANT,'"+str(document)+"','"+str(camps)+"','','','','','','','','',''\n"  #+'PDF-EXTRACT,10.252.252.32,pdf_extract,'+nivell+','+descripcio+','+estadistica+','+gravetat+','+wdata+','+INTNAVANT+','+document+',,,,,,,,,\n'  
         with open('outputs/LogPDF_Extract_'+dataprocess+'.txt', 'a', encoding='utf-8') as logGen:
             logGen.write(buffer)
