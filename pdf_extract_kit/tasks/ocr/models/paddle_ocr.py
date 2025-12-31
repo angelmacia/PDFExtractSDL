@@ -296,6 +296,9 @@ class ModifiedPaddleOCR(PaddleOCR):
     def predict(self, img, **kwargs):
         ppocr_res = self.ocr(img, **kwargs)[0]
         ocr_res = []
+        print (ppocr_res)
+        if (ppocr_res is None):
+            return ocr_res
         for box_ocr_res in ppocr_res:
             p1, p2, p3, p4 = box_ocr_res[0]
             text, score = box_ocr_res[1]
@@ -431,8 +434,9 @@ class ModifiedPaddleOCR(PaddleOCR):
             time_dict['cls'] = elapse
             logger.debug("cls num  : {}, elapsed : {}".format(
                 len(img_crop_list), elapse))
-
+        print ('text recognizer start..................',img_crop_list)
         rec_res, elapse = self.text_recognizer(img_crop_list)
+        print ('text recognizer finish..................', rec_res, elapse )
         time_dict['rec'] = elapse
         logger.debug("rec_res num  : {}, elapsed : {}".format(
             len(rec_res), elapse))
@@ -440,6 +444,7 @@ class ModifiedPaddleOCR(PaddleOCR):
             self.draw_crop_rec_res(self.args.crop_res_save_dir, img_crop_list,
                                    rec_res)
         filter_boxes, filter_rec_res = [], []
+        
         for box, rec_result in zip(dt_boxes, rec_res):
             text, score = rec_result
             if score >= self.drop_score:

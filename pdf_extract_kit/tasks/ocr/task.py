@@ -38,6 +38,7 @@ class OCRTask(BaseTask):
     documents=0
     correctes=0
     revisions=0
+    eliminats=0
     nomDocumentProcessat=''
     
     def __init__(self, model):
@@ -79,6 +80,8 @@ class OCRTask(BaseTask):
             ]
         """
         return self.model.predict(image)
+
+        
         
     def prepare_input_files(self, input_path):
         if os.path.isdir(input_path):
@@ -89,11 +92,11 @@ class OCRTask(BaseTask):
             
     def process(self, input_path, save_dir=None, visualize=False):
         #opcions de process
-        sw_drivebaixada=1
-        sw_drivepujada=1
+        sw_drivebaixada=0
+        sw_drivepujada=0
         sw_separarPlanes=1
-        sw_nomesSeparar=0
-        sw_guardarjson=0
+        sw_nomesSeparar=0       
+        sw_guardarjson=1
         sw_guardarjsonerronis=1
         ult_camps=[]
         if(os.path.isdir('/srv/pdf-extract')):
@@ -145,6 +148,7 @@ class OCRTask(BaseTask):
             self.documents=0
             self.correctes=0
             self.revisions=0
+            self.eliminats=0
             for fpath in file_list:  # Per cada PDF
                 if fpath.endswith(".pdf") or fpath.endswith(".PDF"):
                     basename = os.path.basename(fpath)[:-4].replace('.','_') # treiem els punts intermitjos del nom
@@ -163,8 +167,10 @@ class OCRTask(BaseTask):
                         self.numPlanes=self.numPlanes+1
                         #self.guardar_logs('Processant '+basename,0,1,basename + f"_{page+1}.pdf")
                         self.reglog = '' 
+                        print ('entrar a predict_image')
                         page_res = self.predict_image(img)
                         pdf_res.append(page_res)
+                        print ('pause')
                         nom = save_dir + separador + basename
                         ClientNav=None
                         #print(save_dir,'------------------------->>> ')
@@ -196,7 +202,7 @@ class OCRTask(BaseTask):
                             if(sw_guardarjson):
                                 self.save_json_result( page_res, os.path.join(save_dir,'jsons', basename + f"_{page+1}.json"))
                             if(plant==''):  
-                                print('Detectant plantilla '+basename+' '+datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                                #print('Detectant plantilla '+basename+' '+datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                                 plantilles=self.detectarPlantilla(page_res)
                                 if (plantilles==[]):
                                     sw_error=True
@@ -204,26 +210,28 @@ class OCRTask(BaseTask):
                                     plant=plantilles[0]
                                     arxplantilla=plantilles[1]
 
-                            print('--------------------------------------------------')
-                            print('Plana : ',page+1)
+                            #print('--------------------------------------------------')
+                            #print('Plana : ',page+1)
                             print ('La plantilla es: ',plant)
 
                             ####### eliminar documents en cas de plantilla XX
                             if (plant=='XX'):
                                 self.guardar_logs('Document eliminat XX',0,1, basename + f"_{page+1}.pdf")
+                                self.eliminats=self.eliminats+1
                                 continue
 
                             if(plant is not None and sw_error==False):
                                 if (camps)==[]:
-                                    print('Detectant camps '+basename+' '+datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                                    #print('Detectant camps '+basename+' '+datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                                     camps=self.detectarCamps(arxplantilla,page_res)
                                 #print ('Els camps son: ',camps)  
                                 x=0  
                                 x=len(camps)
-                                print ('Resultats de camps : ',x)
+                                #print ('Resultats de camps : ',x)
                                 if (plant=='VP'):
                                     if(ult_camps!=[]):
-                                        if (x==1 and camps[0].maketrans('','','.,; ')==ult_camps[0].maketrans('','','.,; ')):
+                                        if (x<4 and camps[0].maketrans('','','.,; ')==ult_camps[0].maketrans('','','.,; ')):
+                                            print ('Camps: ',ult_camps,camps)
                                             camps=ult_camps
                                             x=4
 
@@ -246,7 +254,6 @@ class OCRTask(BaseTask):
                                         if (camps[3].find(r'/')!=-1):    
                                             camps[3]=camps[3].replace(r'/','-')
                                         try:    
-                                            print (textdata)
                                             data_obj = datetime.strptime(textdata,'%d-%m-%y')
                                         except:
                                             try:
@@ -279,7 +286,7 @@ class OCRTask(BaseTask):
 
                                         nom = os.path.join(carpeta,self.gestionanom(CodiClientNav,gNeg, data_obj.strftime("%Y-%m-%d"), plant,camps[3]+".pdf"))
                                 else :
-                                    print ('Menys de 4 camps')
+                                    #print ('Menys de 4 camps')
                                     self.guardar_logs('No s\'han trobat tots els camps',1,2, basename + f"_{page+1}.pdf")
                                     sw_error=True
                             else: 
@@ -339,7 +346,7 @@ class OCRTask(BaseTask):
                     os.remove(fpath)  
                           
             if(self.numPlanes>0): 
-                t_estadistica=(str(self.numPlanes)+'#'+str(self.documents)+'#'+str(self.correctes)+'#'+str(self.revisions))
+                t_estadistica=('📄'+str(self.numPlanes)+'#💾'+str(self.documents)+'#🟢'+str(self.correctes)+'#🟡'+str(self.revisions)+'#❌'+str(self.eliminats))
                 self.guardar_logs('Procés finalitzat',0,0,self.numPlanes,t_estadistica)
         
         if (sw_drivepujada):
@@ -469,7 +476,7 @@ class OCRTask(BaseTask):
                     camp=arrlinea[0]
                     arrposicio=arrlinea[1].split(",") 
                     expresio=arrlinea[2]
-                    print (f'Expressio : {camp} :',expresio)
+                    #print (f'Expressio : {camp} :',expresio)
                     posicio=[]
                     for a in arrposicio:
                         posicio.append(float(a))
@@ -513,7 +520,7 @@ class OCRTask(BaseTask):
                                                             variable=re.search(expresio, i['text'])
                                                             
                                                             if(variable is not None):
-                                                                print ('El camp '+camp+' es: ',variable.group(0))
+                                                                #print ('El camp '+camp+' es: ',variable.group(0))
                                                                 resultat.append(variable.group(0))
                                                             # else:
                                                             #     print ('No TROBAT el camp '+camp+' : ',i['text'])
@@ -544,11 +551,11 @@ class OCRTask(BaseTask):
                 if(prove==i[0] or prove=='*'):
                     if(prove=='*' and ('SERHS'==i[0] or'VP'==i[0])):
                         if(plataforma==i[2]):
-                            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                            #print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                             return i
                     else:       
                         if(plataforma==i[2]):
-                            print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                            #print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                             return i
         return None
 
@@ -642,8 +649,8 @@ class OCRTask(BaseTask):
     def separa_i_orienta(self,input_pdf):
         #Corregeix l’orientació de cada pàgina i la guarda en un fitxer individual.
         #Els fitxers tindran el nom: {output_prefix}_1.pdf, {output_prefix}_2.pdf, etc.
-        if "_Pag_" in input_pdf:
-            return 0
+        # if "_Pag_" in input_pdf:
+        #     return 0
         
         reader = PdfReader(input_pdf)
         doc = fitz.open(input_pdf)
@@ -662,30 +669,46 @@ class OCRTask(BaseTask):
             # Renderitzar com a imatge
             pix = fitz_page.get_pixmap(dpi=150)
             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-            if ('r-00' in input_pdf):
+            if ('r-00' in input_pdf.lower()):
                 print(f"✓ Pàgina {page_number + 1}: orientació correcta")
             else :
-                if ('r-90' in input_pdf):
+             if ('r90_' in input_pdf.lower()):
+                    pdf_page.rotate(90)
+                    print(f"↻ Pàgina {page_number + 1}: rotació assignada 90° → corregint")
+                    sw_guardar=True    
+             else :
+                if ('r-90' in input_pdf.lower()):
                     pdf_page.rotate(-90)
-                    print(f"↻ Pàgina {page_number + 1}: rotació detectada -90° → corregint")
+                    print(f"↻ Pàgina {page_number + 1}: rotació assignada -90° → corregint")
                     sw_guardar=True
                 else:
-                    # Detectar i corregir orientació
-                    angle = self.detect_orientation(img)
-                    if angle != 0:
-                        print(f"↻ Pàgina {page_number + 1}: rotació detectada {angle}° → corregint")
-                        pdf_page.rotate(angle)
+                    if ('r-180' in input_pdf.lower()):
+                        pdf_page.rotate(180)
+                        print(f"↻ Pàgina {page_number + 1}: rotació assignada 180° → corregint")
                         sw_guardar=True
                     else:
-                        print(f"✓ Pàgina {page_number + 1}: orientació correcta")
-                        # pdf_page.rotate(angle)
+                        # Detectar i corregir orientació
+                        angle = self.detect_orientation(img)
+                        if angle != 0:
+                            print(f"↻ Pàgina {page_number + 1}: rotació detectada {angle}° → corregint")
+                            pdf_page.rotate(angle)
+                            sw_guardar=True
+                        else:
+                            print(f"✓ Pàgina {page_number + 1}: orientació correcta")
+                            # pdf_page.rotate(angle)
 
             # Crear fitxer individual
-            if(total_pages>1):
-                output_file = f"{nomsenseext.replace('r-90', 'r-00')}_Pag_{page_number + + 1:04d}.pdf"
-            else:
-                output_file = f"{nomsenseext.replace('r-90', 'r-00')}.pdf"
             if(sw_guardar==True):    
+                output_file = nomsenseext
+                output_file = re.sub(r'r-90',  'r-00',  output_file)  # cas 1
+                output_file = re.sub(r'r-180', 'r-000', output_file)  # cas 2
+                output_file = re.sub(r'r90',   'r-00',  output_file)  # cas 3
+                print (output_file)
+                if(total_pages>1):
+                    output_file = f"{output_file}_Pag_{page_number + + 1:04d}.pdf"
+                else:
+                    output_file = f"{output_file}.pdf"
+
                 writer = PdfWriter()
                 writer.add_page(pdf_page)
                 with open(output_file, "wb") as f:
@@ -696,7 +719,8 @@ class OCRTask(BaseTask):
         if (total_pages>1):
             print(f"✅ Totes les pàgines separades amb prefix: Pag_*.pdf")
         if sw_guardar:
-            os.remove(input_pdf)
+            if (input_pdf!=output_file):
+                os.remove(input_pdf)
         return total_pages
 
     def guardar_logs(self,descripcio,gravetat,nivell,document,estadistica=None,camps=None):       
