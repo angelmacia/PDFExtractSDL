@@ -352,10 +352,10 @@ class OCRTask(BaseTask):
         if (sw_drivepujada):
             if(os.path.isdir('/srv/pdf-extract')):
                 # DADES PEL SERVIDOR DE PRODUCCIO  ############################################################################
-                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Palafolls/2025", "ocr_output_palafolls:"])
-                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Tarragona/2025", "ocr_output_tarragona:"])
-                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Ripollet/2025", "ocr_output_ripollet:"])                
-                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Fornells/2025", "ocr_output_fornells:"])
+                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Palafolls/2026", "ocr_output_palafolls:"])
+                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Tarragona/2026", "ocr_output_tarragona:"])
+                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Ripollet/2026", "ocr_output_ripollet:"])                
+                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Fornells/2026", "ocr_output_fornells:"])
                 run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Palafolls/revisions", "ocr_output_palafolls:/revisions"]) 
                 run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Tarragona/revisions", "ocr_output_tarragona:/revisions"])
                 run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Ripollet/revisions", "ocr_output_ripollet:/revisions"])
@@ -363,20 +363,20 @@ class OCRTask(BaseTask):
             else :
                 if (os.path.isdir(r'c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main')): 
                     # DADES PER L'EXECUCIO EN LOCAL  ##############################################################################
-                    run(["rclone", "move", r"C:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Palafolls\2025", "ocr_output_palafolls:"])
-                    run(["rclone", "move", r"C:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Tarragona\2025", "ocr_output_tarragona:"])
-                    run(["rclone", "move", r"c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Ripollet\2025",  "ocr_output_ripollet:"])
-                    run(["rclone", "move", r"c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Fornells\2025",  "ocr_output_fornells:"])
+                    run(["rclone", "move", r"C:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Palafolls\2026", "ocr_output_palafolls:"])
+                    run(["rclone", "move", r"C:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Tarragona\2026", "ocr_output_tarragona:"])
+                    run(["rclone", "move", r"c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Ripollet\2026",  "ocr_output_ripollet:"])
+                    run(["rclone", "move", r"c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Fornells\2026",  "ocr_output_fornells:"])
                     run(["rclone", "move", r"c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Palafolls\revisions", "ocr_output_palafolls:/revisions"])
                     run(["rclone", "move", r"c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Tarragona\revisions", "ocr_output_tarragona:/revisions"])
                     run(["rclone", "move", r"c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Ripollet\revisions",  "ocr_output_ripollet:/revisions"])
                     run(["rclone", "move", r"C:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Fornells\revisions",  "ocr_output_fornells:/revisions"])
                 else:
                     # DADES PER L'EXECUCIO EN LOCAL  ##############################################################################
-                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Palafolls/2025", "ocr_output_palafolls:"])
-                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Tarragona/2025", "ocr_output_tarragona:"])
-                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/2025",  "ocr_output_ripollet:"])
-                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Fornells/2025",  "ocr_output_fornells:"])
+                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Palafolls/2026", "ocr_output_palafolls:"])
+                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Tarragona/2026", "ocr_output_tarragona:"])
+                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/2026",  "ocr_output_ripollet:"])
+                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Fornells/2026",  "ocr_output_fornells:"])
                     run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Palafolls/revisions", "ocr_output_palafolls:/revisions"])
                     run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Tarragona/revisions", "ocr_output_tarragona:/revisions"])
                     run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/revisions",  "ocr_output_ripollet:/revisions"])
@@ -700,10 +700,13 @@ class OCRTask(BaseTask):
             # Crear fitxer individual
             if(sw_guardar==True):    
                 output_file = nomsenseext
-                output_file = re.sub(r'r-90',  'r-00',  output_file)  # cas 1
-                output_file = re.sub(r'r-180', 'r-000', output_file)  # cas 2
-                output_file = re.sub(r'r90',   'r-00',  output_file)  # cas 3
-                print (output_file)
+                if('r-90' in output_file.lower()):
+                    output_file = re.sub(r'r-90',  'r-00',  output_file.lower())  # cas 1
+                if('r-180' in output_file.lower()):
+                    output_file = re.sub(r'r-180', 'r-000', output_file.lower())  # cas 2
+                if('r90' in output_file.lower()):
+                    output_file = re.sub(r'r90',   'r-00',  output_file.lower())  # cas 3
+               #print (output_file)
                 if(total_pages>1):
                     output_file = f"{output_file}_Pag_{page_number + + 1:04d}.pdf"
                 else:

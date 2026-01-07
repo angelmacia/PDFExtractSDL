@@ -296,7 +296,7 @@ class ModifiedPaddleOCR(PaddleOCR):
     def predict(self, img, **kwargs):
         ppocr_res = self.ocr(img, **kwargs)[0]
         ocr_res = []
-        print (ppocr_res)
+        #print (ppocr_res)
         if (ppocr_res is None):
             return ocr_res
         for box_ocr_res in ppocr_res:
@@ -429,20 +429,17 @@ class ModifiedPaddleOCR(PaddleOCR):
                 img_crop = get_minarea_rect_crop(ori_im, tmp_box)
             img_crop_list.append(img_crop)
         if self.use_angle_cls and cls:
-            img_crop_list, angle_list, elapse = self.text_classifier(
-                img_crop_list)
+            img_crop_list, angle_list, elapse = self.text_classifier(img_crop_list)
             time_dict['cls'] = elapse
             logger.debug("cls num  : {}, elapsed : {}".format(
                 len(img_crop_list), elapse))
-        print ('text recognizer start..................',img_crop_list)
+        #print ('text recognizer start..................',img_crop_list)
         rec_res, elapse = self.text_recognizer(img_crop_list)
-        print ('text recognizer finish..................', rec_res, elapse )
+        #print ('text recognizer finish..................', rec_res, elapse )
         time_dict['rec'] = elapse
-        logger.debug("rec_res num  : {}, elapsed : {}".format(
-            len(rec_res), elapse))
+        logger.debug("rec_res num  : {}, elapsed : {}".format(len(rec_res), elapse))
         if self.args.save_crop_res:
-            self.draw_crop_rec_res(self.args.crop_res_save_dir, img_crop_list,
-                                   rec_res)
+            self.draw_crop_rec_res(self.args.crop_res_save_dir, img_crop_list, rec_res)
         filter_boxes, filter_rec_res = [], []
         
         for box, rec_result in zip(dt_boxes, rec_res):
