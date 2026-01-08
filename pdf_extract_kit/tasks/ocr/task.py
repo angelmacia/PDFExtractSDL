@@ -91,13 +91,15 @@ class OCRTask(BaseTask):
         return file_list
             
     def process(self, input_path, save_dir=None, visualize=False):
+        ###############################################################
         #opcions de process
         sw_drivebaixada=0
-        sw_drivepujada=0
+        sw_drivepujada=1
         sw_separarPlanes=1
         sw_nomesSeparar=0       
         sw_guardarjson=1
         sw_guardarjsonerronis=1
+        ###############################################################
         ult_camps=[]
         if(os.path.isdir('/srv/pdf-extract')):
             directoriDrive ="/srv/pdf-extract/PDF-Extract-Kit-main/assets/inputs/ocr"
@@ -352,6 +354,10 @@ class OCRTask(BaseTask):
         if (sw_drivepujada):
             if(os.path.isdir('/srv/pdf-extract')):
                 # DADES PEL SERVIDOR DE PRODUCCIO  ############################################################################
+                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Palafolls/2025", "ocr_output_palafolls:"])
+                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Tarragona/2025", "ocr_output_tarragona:"])
+                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Ripollet/2025", "ocr_output_ripollet:"])                
+                run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Fornells/2025", "ocr_output_fornells:"])
                 run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Palafolls/2026", "ocr_output_palafolls:"])
                 run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Tarragona/2026", "ocr_output_tarragona:"])
                 run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Ripollet/2026", "ocr_output_ripollet:"])                
@@ -363,6 +369,10 @@ class OCRTask(BaseTask):
             else :
                 if (os.path.isdir(r'c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main')): 
                     # DADES PER L'EXECUCIO EN LOCAL  ##############################################################################
+                    run(["rclone", "move", r"C:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Palafolls\2025", "ocr_output_palafolls:"])
+                    run(["rclone", "move", r"C:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Tarragona\2025", "ocr_output_tarragona:"])
+                    run(["rclone", "move", r"c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Ripollet\2025",  "ocr_output_ripollet:"])
+                    run(["rclone", "move", r"c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Fornells\2025",  "ocr_output_fornells:"])
                     run(["rclone", "move", r"C:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Palafolls\2026", "ocr_output_palafolls:"])
                     run(["rclone", "move", r"C:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Tarragona\2026", "ocr_output_tarragona:"])
                     run(["rclone", "move", r"c:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Ripollet\2026",  "ocr_output_ripollet:"])
@@ -373,6 +383,10 @@ class OCRTask(BaseTask):
                     run(["rclone", "move", r"C:\PDF-Extract-Kit-main\PDF-Extract-Kit-main\outputs\ocr\Fornells\revisions",  "ocr_output_fornells:/revisions"])
                 else:
                     # DADES PER L'EXECUCIO EN LOCAL  ##############################################################################
+                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Palafolls/2025", "ocr_output_palafolls:"])
+                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Tarragona/2025", "ocr_output_tarragona:"])
+                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/2025",  "ocr_output_ripollet:"])
+                    run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Fornells/2025",  "ocr_output_fornells:"])
                     run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Palafolls/2026", "ocr_output_palafolls:"])
                     run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Tarragona/2026", "ocr_output_tarragona:"])
                     run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/2026",  "ocr_output_ripollet:"])
@@ -537,6 +551,18 @@ class OCRTask(BaseTask):
             print("Error: l'arxiu "+ nom +" no hi és.")
         return resultat
     def carregaDadesNavision(self):
+        # comprovar que sigui l'ultim arxiu de la carpeta \\srhdisfiler01.serhs.loc\FTP\FTPS_DOCUWARE\ENV\CliGrupNegoci.csv
+        print ()
+        print (r'Comprovant arxiu de la carpeta \\srhdisfiler01.serhs.loc\Filer\PDFExtract   ------> ',os.path.isdir(r'\\srhdisfiler01.serhs.loc\Filer\PDFExtract'))
+        print()
+        if (os.path.isdir(r'\\srhdisfiler01.serhs.loc\Filer\PDFExtract')):
+            print ('Copiant arxiu de la carpeta \\srhdisfiler01.serhs.loc\Filer\PDFExtract\CliGrupNegoci.csv')
+            os.copyfile(r'\\srhdisfiler01.serhs.loc\Filer\PDFExtract\CliGrupNegoci.csv' , 'assets/inputs/CliGrupNegoci.csv')
+            print ('Eliminant arxiu de la carpeta \\\\srhdisfiler01.serhs.loc\Filer\PDFExtract\CliGrupNegoci.csv')
+            #os.remove(r'\\srhdisfiler01.serhs.loc\Filer\PDFExtract\CliGrupNegoci.csv')
+
+        self.dadesGrupNegoci=[]
+
         with open('assets/inputs/CliGrupNegoci.csv', encoding='latin1') as f:
           cont=0
           for linea in f:
@@ -688,7 +714,7 @@ class OCRTask(BaseTask):
                         sw_guardar=True
                     else:
                         # Detectar i corregir orientació
-                        angle = self.detect_orientation(img)
+                        angle = 0 #self.detect_orientation(img)
                         if angle != 0:
                             print(f"↻ Pàgina {page_number + 1}: rotació detectada {angle}° → corregint")
                             pdf_page.rotate(angle)
