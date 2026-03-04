@@ -9,6 +9,7 @@ import pytesseract
 import fitz  # PyMuPDF
 import sys
 import os
+import shutil
 from pathlib import Path
 from datetime import datetime
 import xml.etree.ElementTree as ET
@@ -97,10 +98,12 @@ class OCRTask(BaseTask):
         sw_drivepujada=1
         sw_separarPlanes=1
         sw_nomesSeparar=0       
-        sw_guardarjson=1
+        sw_guardarjson=0
         sw_guardarjsonerronis=1
         ###############################################################
         ult_camps=[]
+        dataprocess= datetime.now().strftime("%Y-%m-%d")
+
         if(os.path.isdir('/srv/pdf-extract')):
             directoriDrive ="/srv/pdf-extract/PDF-Extract-Kit-main/assets/inputs/ocr"
             separador='/'
@@ -169,10 +172,10 @@ class OCRTask(BaseTask):
                         self.numPlanes=self.numPlanes+1
                         #self.guardar_logs('Processant '+basename,0,1,basename + f"_{page+1}.pdf")
                         self.reglog = '' 
-                        print ('entrar a predict_image')
+                        #print ('entrar a predict_image')
                         page_res = self.predict_image(img)
                         pdf_res.append(page_res)
-                        print ('pause')
+                        #print ('pause')
                         nom = save_dir + separador + basename
                         ClientNav=None
                         #print(save_dir,'------------------------->>> ')
@@ -222,7 +225,7 @@ class OCRTask(BaseTask):
                                 self.eliminats=self.eliminats+1
                                 continue
 
-                            if(plant is not None and sw_error==False):
+                            if(plant !='' and sw_error==False):
                                 if (camps)==[]:
                                     #print('Detectant camps '+basename+' '+datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                                     camps=self.detectarCamps(arxplantilla,page_res)
@@ -232,10 +235,11 @@ class OCRTask(BaseTask):
                                 #print ('Resultats de camps : ',x)
                                 if (plant=='VP'):
                                     if(ult_camps!=[]):
-                                        if (x<4 and camps[0].maketrans('','','.,; ')==ult_camps[0].maketrans('','','.,; ')):
-                                            print ('Camps: ',ult_camps,camps)
-                                            camps=ult_camps
-                                            x=4
+                                        if (x<4 and x>1):
+                                            if(camps[0].maketrans('','','.,; ')==ult_camps[0].maketrans('','','.,; ')):
+                                                print ('Camps: ',ult_camps,camps)
+                                                camps=ult_camps
+                                                x=4
 
                                 if (x>3)  : 
                                     ult_camps=camps 
@@ -319,6 +323,8 @@ class OCRTask(BaseTask):
                             if (ClientNav is not None):  #nomes als albarans propis de distribució
                                 #print(ClientNav)
                                 numemails=len(ClientNav)
+                                if (ClientNav[6] != 'ESP'):
+                                    ClientNav[6]='CAT'
                                 if (ClientNav[7] >' ') and (not sw_error):
                                     emails=ClientNav[7]
                                     if (numemails>8):
@@ -348,10 +354,10 @@ class OCRTask(BaseTask):
                     os.remove(fpath)  
                           
             if(self.numPlanes>0): 
-                t_estadistica=('📄'+str(self.numPlanes)+'#💾'+str(self.documents)+'#🟢'+str(self.correctes)+'#🟡'+str(self.revisions)+'#❌'+str(self.eliminats))
-                self.guardar_logs('Procés finalitzat',0,0,self.numPlanes,t_estadistica)
+                t_estadistica=('Fulls: '+str(self.numPlanes)+'#Documents: '+str(self.documents)+'#Correctes: '+str(self.correctes)+'#Revisions: '+str(self.revisions)+'#Eliminats: '+str(self.eliminats))
+                self.guardar_logs('Procés finalitzat',0,0,self.numPlanes,t_estadistica,plataforma)
         
-        if (sw_drivepujada):
+        if (sw_drivepujada and self.documents>0):
             if(os.path.isdir('/srv/pdf-extract')):
                 # DADES PEL SERVIDOR DE PRODUCCIO  ############################################################################
                 run(["rclone", "move", "/srv/pdf-extract/PDF-Extract-Kit-main/outputs/ocr/Palafolls/2025", "ocr_output_palafolls:"])
@@ -395,6 +401,7 @@ class OCRTask(BaseTask):
                     run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Tarragona/revisions", "ocr_output_tarragona:/revisions"])
                     run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Ripollet/revisions",  "ocr_output_ripollet:/revisions"])
                     run(["rclone", "move", "/mnt/c/PDF-Extract-Kit-main/PDF-Extract-Kit-main/outputs/ocr/Fornells/revisions",  "ocr_output_fornells:/revisions"])
+        shutil.copyfile('outputs/LogPDF_Extract_'+dataprocess+'.txt',r'\\srhdisfiler01.serhs.loc\Filer\PDFExtract\LogPDF_Extract_'+dataprocess+'.txt')            
         return res_list
     
     def visualize_image(self, imatge, ocr_res, save_path, cate2color={}):
@@ -461,7 +468,7 @@ class OCRTask(BaseTask):
                                 if (re.search(p,i['text']) is not None):
                                     self.marge_document_y=float(i['poly'][1])-float(arrlinea[3])
                                     self.marge_document_x=float(i['poly'][0])-float(arrlinea[4])
-                                #  print ('Limits plantilla :',i['poly'][0],' ',i['poly'][1], '   ', arrlinea[4], ' ', arrlinea[3])
+                                    print ('Limits plantilla :',i['poly'][0],' ',i['poly'][1], '   ', arrlinea[4], ' ', arrlinea[3])
                                     return [arrlinea[0],arrlinea[1]]
                             # if (re.search(arrlinea[2],i['text']) is not None):    
                             #     self.marge_document_y=float(i['poly'][1])-float(arrlinea[3])
@@ -507,11 +514,12 @@ class OCRTask(BaseTask):
                         if(abs(i['poly'][1]-(posicio[1]+self.marge_document_y))<self.marge_posicio_y):
                             v_x=self.marge_posicio_x + abs(self.marge_document_x)    
                             if(abs(i['poly'][0]-posicio[0])+self.marge_document_x <self.marge_posicio_x) or ((i['poly'][0]<(posicio[0]+v_x) or i['poly'][0]<(posicio[0]-v_x)) and (i['poly'][2]>(posicio[2]+v_x ) or i['poly'][2]>(posicio[2]-v_x ))):
+                            #if(abs(i['poly'][0]-(posicio[0]+self.marge_document_x))<self.marge_posicio_x):                            
                         #if (i['poly'][0]<(posicio[0]+v_x) and i['poly'][0]>(posicio[0]-v_x) and i['poly'][2]<(posicio[2]+v_x ) and i['poly'][2]>(posicio[2]-v_x )): # <--- Falta perfeccionar aquesta condicio 
                         #if(i['poly'][0] <(posicio[0]+self.marge_posicio)): 
                             #print('marge total',v_x)  
-                                                       # print('posicion Plantilla  :',posicio[0],posicio[1],posicio[2],posicio[3],camp,self.marge_document_x,self.marge_document_y)
-                                                       # print('posicion Camp OCR   :',i['poly'][0],i['poly'][1],i['poly'][2],i['poly'][3],i['text'],self.marge_document_x,self.marge_document_y)
+                                                        print('posicion Plantilla  :',posicio[0],posicio[1],posicio[2],posicio[3],camp,self.marge_document_x,self.marge_document_y)
+                                                        print('posicion Camp OCR   :',i['poly'][0],i['poly'][1],i['poly'][2],i['poly'][3],i['text'],self.marge_document_x,self.marge_document_y)
                                                         registrejson+='"'+camp.lower()+'":"'+i['text']+'",'
                                                             
                                     # if (i['poly'][0]<(posicio[0]) and i['poly'][2]>(posicio[2])): 
@@ -552,13 +560,13 @@ class OCRTask(BaseTask):
         return resultat
     def carregaDadesNavision(self):
         # comprovar que sigui l'ultim arxiu de la carpeta \\srhdisfiler01.serhs.loc\FTP\FTPS_DOCUWARE\ENV\CliGrupNegoci.csv
-        print ()
-        print (r'Comprovant arxiu de la carpeta \\srhdisfiler01.serhs.loc\Filer\PDFExtract   ------> ',os.path.isdir(r'\\srhdisfiler01.serhs.loc\Filer\PDFExtract'))
-        print()
+        #print ()
+        #print (r'Comprovant arxiu de la carpeta \\srhdisfiler01.serhs.loc\Filer\PDFExtract   ------> ',os.path.isdir(r'\\srhdisfiler01.serhs.loc\Filer\PDFExtract'))
+        #print()
         if (os.path.isdir(r'\\srhdisfiler01.serhs.loc\Filer\PDFExtract')):
-            print ('Copiant arxiu de la carpeta \\srhdisfiler01.serhs.loc\Filer\PDFExtract\CliGrupNegoci.csv')
-            os.copyfile(r'\\srhdisfiler01.serhs.loc\Filer\PDFExtract\CliGrupNegoci.csv' , 'assets/inputs/CliGrupNegoci.csv')
-            print ('Eliminant arxiu de la carpeta \\\\srhdisfiler01.serhs.loc\Filer\PDFExtract\CliGrupNegoci.csv')
+            print ('Copiant arxiu: \\srhdisfiler01.serhs.loc\Filer\PDFExtract\CliGrupNegoci.csv')
+            shutil.copyfile(r'\\srhdisfiler01.serhs.loc\Filer\PDFExtract\CliGrupNegoci.csv' , 'assets/inputs/CliGrupNegoci.csv')
+            #print ('Eliminant arxiu de la carpeta \\\\srhdisfiler01.serhs.loc\Filer\PDFExtract\CliGrupNegoci.csv')
             #os.remove(r'\\srhdisfiler01.serhs.loc\Filer\PDFExtract\CliGrupNegoci.csv')
 
         self.dadesGrupNegoci=[]

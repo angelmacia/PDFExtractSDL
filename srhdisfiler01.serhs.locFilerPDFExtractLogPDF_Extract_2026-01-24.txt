@@ -1,0 +1,3 @@
+'PDF-EXTRACT','10.252.252.32','pdf_extract','0','Comença el procés ','None','0','2026-01-24 19:55:45.287597',INTNAVANT,'','None','','','','','','','','',''
+'PDF-EXTRACT','10.252.252.32','pdf_extract','1','Processat Palafolls (r-00_22-01-26 r363_Pag_0009_1_1.pdf)','None','0','2026-01-24 19:55:50.689804',INTNAVANT,'outputs/ocr/Palafolls/2026/1/22/VP/01062470_[SERHSFOOD]_2026-01-22_VP_CV326-004847.pdf','['01062470', 'ESCOLACASTELLDEDOSRIUS', '22/01/26', 'CV326/004847']','','','','','','','','',''
+'PDF-EXTRACT','10.252.252.32','pdf_extract','0','Procés finalitzat','Fulls: 1#Documents: 1#Correctes: 1#Revisions: 0#Eliminats: 0','0','2026-01-24 19:55:50.699872',INTNAVANT,'1','Palafolls','','','','','','','','',''

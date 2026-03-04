@@ -7,8 +7,7 @@ from pathlib import Path
 class Email:
     def __init__(self, receiver, subject, idioma,  body, files=None):
         self.sender = 'distribucio@grupserhs.com'
-        self.password = 'rmbuoclwswtlvbdx'
-
+        self.password = 'bjjenqlpqehssirt'
         self.receiver = receiver.replace(';', ',')
         self.subject = subject
         self.body = body 
